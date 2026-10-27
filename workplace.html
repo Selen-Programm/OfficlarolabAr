@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="es">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#050806">
+  <meta name="description" content="Recorrido de realidad aumentada por las oficinas de Clarolab.">
+  <title>Workplace paradise · Clarolab</title>
+  <link rel="stylesheet" href="./workplace.css">
+  <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
+  <script src="./workplace.js" defer></script>
+</head>
+
+<body>
+  <main class="tour-app">
+    <header class="topbar">
+      <a class="wordmark" href="./index.html" aria-label="Volver al inicio"><span
+          class="wordmark-mark">C/</span><span>CLAROLAB</span></a>
+      <span class="topbar-label">OPEN HOUSE <i></i> JUNÍN, ARGENTINA</span>
+    </header>
+
+    <section class="welcome-panel" id="welcomePanel" aria-labelledby="page-title">
+      <div class="welcome-copy">
+        <div class="eyebrow"><span></span> UN RECORRIDO POR NUESTRO ESPACIO</div>
+        <h1 id="page-title">Workplace<br><span>paradise.</span></h1>
+        <p>Las mejores ideas también necesitan un buen lugar donde encontrarse. Bienvenido a las oficinas de Clarolab.
+        </p>
+        <button class="start-button" id="startAR" type="button"><span class="button-icon">⌁</span> Comenzar el recorrido
+          <span class="button-arrow">↗</span></button>
+        <p class="microcopy">Necesitamos acceso a la cámara para activar la experiencia.</p>
+      </div>
+      <div class="welcome-visual" aria-hidden="true">
+        <div class="visual-glow"></div>
+        <div class="visual-ring ring-one"></div>
+        <div class="visual-ring ring-two"></div>
+        <img src="./assets/ars_scan.svg" alt="Escáner de realidad aumentada">
+        <div class="visual-caption"><span>01 / PRIMERA PARADA</span><b>Un espacio para crear.</b></div>
+      </div>
+      <div class="welcome-footer"><span>01 — BIENVENIDA</span><span>DESLIZÁ PARA DESCUBRIR <b>↓</b></span></div>
+    </section>
+
+    <section class="scan-panel" id="scanPanel" aria-label="Escáner de realidad aumentada" aria-hidden="true">
+      <a-scene id="arScene" embedded renderer="colorManagement: true; antialias: true; alpha: true"
+        vr-mode-ui="enabled: false" device-orientation-permission-ui="enabled: false" loading-screen="enabled: false">
+        <a-entity id="officeTarget" mindar-image-target="targetIndex: 0">
+          <a-entity id="officeMessageCard" position="-.02 .2 .08">
+            <a-text value="OFICINAS" align="center" color="#00e6a0" width=".73" position="0 .34 .025"
+              font="roboto" shader="msdf" letter-spacing="2"></a-text>
+            <a-plane position="0 .22 .024" width=".46" height=".004"
+              material="shader: flat; color: #00e6a0"></a-plane>
+            <a-text value="Un espacio para" align="center" color="#f4f7f5" width=".68" position="0 .09 .025"
+              font="roboto" shader="msdf"></a-text>
+            <a-text value="compartir ideas," align="center" color="#f4f7f5" width=".68" position="0 -.02 .025"
+              font="roboto" shader="msdf"></a-text>
+            <a-text value="crear soluciones y" align="center" color="#f4f7f5" width=".68" position="0 -.13 .025"
+              font="roboto" shader="msdf"></a-text>
+            <a-text value="trabajar en equipo." align="center" color="#f4f7f5" width=".68" position="0 -.24 .025"
+              font="roboto" shader="msdf"></a-text>
+            <a-text value="CLAROLAB · JUNÍN" align="center" color="#00e6a0" width=".45" position="0 -.43 .025"
+              font="roboto" shader="msdf" letter-spacing="1"></a-text>
+          </a-entity>
+        </a-entity>
+        <a-camera id="arCamera" position="0 0 0" look-controls="enabled: false"></a-camera>
+      </a-scene>
+      <div class="scan-hud">
+        <div class="hud-top"><a class="hud-brand" href="./index.html"
+            aria-label="Cerrar el recorrido">C/<span>CLAROLAB</span></a><button class="close-button" id="closeAR"
+            type="button" aria-label="Cerrar cámara">×</button></div>
+        <div class="finder" aria-hidden="true"><span></span><span></span><span></span><span></span><i></i></div>
+        <div class="scan-message" role="status" aria-live="polite"><span class="scan-dot"></span><span
+            id="arStatus">Apuntá al marcador de la oficina</span></div>
+        <div class="scan-bottom"><img src="./assets/qr-scan.gif" alt=""><span>Buscá la imagen de la
+            oficina<br><small>Acercá el teléfono y mantenelo estable</small></span></div>
+      </div>
+    </section>
+  </main>
+</body>
+
+</html>
