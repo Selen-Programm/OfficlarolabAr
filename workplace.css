@@ -31,6 +31,67 @@ body {
   background: radial-gradient(ellipse at 70% 42%, rgba(0, 230, 160, .11), transparent 36%), linear-gradient(130deg, #050806, #09110e 58%, #050806);
 }
 
+@media (max-width: 760px) {
+  .site-header {
+    height: 62px;
+  }
+}
+
+header {
+  display: block;
+  unicode-bidi: isolate;
+}
+
+.site-header {
+  position: relative;
+  z-index: 5;
+  height: 76px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0px clamp(1.25rem, 5vw, 5rem);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* Logo c/ / clarolab */
+.brand {
+  display: flex;
+  align-items: center;
+  color: var(--paper);
+  font-size: 0.76rem;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  gap: 0.8rem;
+  text-decoration: none;
+}
+
+.brand-mark {
+  display: grid;
+  width: 36px;
+  height: 36px;
+  color: var(--green);
+  font-size: 1.15rem;
+  letter-spacing: -0.1em;
+  place-items: center;
+  border: 1px solid var(--green);
+}
+
+@media (max-width: 760px) {
+  .header-note {
+    max-width: 9rem;
+    text-align: right;
+    line-height: 1.5;
+    font-size: 0.58rem;
+  }
+}
+
+.header-note {
+  color: var(--muted);
+  font-size: 0.68rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
 .topbar {
   position: relative;
   z-index: 2;
@@ -354,7 +415,10 @@ h1 span {
   pointer-events: auto;
 }
 
-.close-button:hover { color: var(--green); border-color: var(--green); }
+.close-button:hover {
+  color: var(--green);
+  border-color: var(--green);
+}
 
 .finder {
   position: relative;
