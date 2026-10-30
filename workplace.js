@@ -12,6 +12,7 @@
   const scene = document.getElementById('arScene');
   const status = document.getElementById('arStatus');
   const content = window.WORKPLACE_CONTENT;
+  const targetItems = content.groups.flatMap((group) => group.targets);
   const detectedTargets = new Set();
 
   // Variables de control de estado de la aplicación
@@ -39,8 +40,8 @@
     };
 
     // Coordenadas de los vértices para las capas exterior e interior de la tarjeta
-    const outerPoints = [[-.44, .55], [.35, .55], [.47, -.55], [-.55, -.55]];
-    const innerPoints = [[-.42, .535], [.335, .535], [.45, -.535], [-.53, -.535]];
+    const outerPoints = [[-.5, .55], [.32, .55], [.47, .4], [.47, -.55], [-.55, -.55]];
+    const innerPoints = [[-.485, .535], [.312, .535], [.455, .394], [.455, -.535], [-.535, -.535]];
 
     // Función para crear capas planas (Mesh) con geometría y color personalizado
     const makeLayer = (points, color, z) => {
@@ -97,6 +98,46 @@
       return;
     }
 
+    if (item.visual === 'workstation') {
+      const monitor = document.createElement('a-plane');
+      monitor.setAttribute('position', '-.32 .455 .04');
+      monitor.setAttribute('width', '.12');
+      monitor.setAttribute('height', '.075');
+      monitor.setAttribute('material', `shader: flat; color: ${item.accent}`);
+      card.appendChild(monitor);
+      const screen = document.createElement('a-plane');
+      screen.setAttribute('position', '-.32 .455 .05');
+      screen.setAttribute('width', '.095');
+      screen.setAttribute('height', '.05');
+      screen.setAttribute('material', `shader: flat; color: ${item.background}`);
+      card.appendChild(screen);
+      return;
+    }
+
+    if (item.visual === 'team' || item.visual === 'fran') {
+      const count = item.visual === 'fran' ? 2 : 3;
+      for (let index = 0; index < count; index += 1) {
+        const person = document.createElement('a-sphere');
+        person.setAttribute('position', `${-.36 + index * .07} .47 .045`);
+        person.setAttribute('radius', '.018');
+        person.setAttribute('color', index === 1 ? item.accent : '#f4f7f5');
+        card.appendChild(person);
+        const shoulders = document.createElement('a-box');
+        shoulders.setAttribute('position', `${-.36 + index * .07} .425 .045`);
+        shoulders.setAttribute('width', '.045');
+        shoulders.setAttribute('height', '.025');
+        shoulders.setAttribute('depth', '.012');
+        shoulders.setAttribute('color', item.accent);
+        card.appendChild(shoulders);
+      }
+      return;
+    }
+
+    if (item.visual === 'learning' || item.visual === 'quality' || item.visual === 'security') {
+      createText(card, `${item.id}-symbol`, item.visual === 'quality' ? '✓' : item.visual === 'security' ? '◆' : '↗', '.09', '-.32 .45 .05', item.accent);
+      return;
+    }
+
     ['#fa4f9b', '#ffbf45', '#46c7c2', '#6384ff'].forEach((color, index) => {
       const swatch = document.createElement('a-plane');
       swatch.setAttribute('position', `${-.38 + index * .075} .455 .04`);
@@ -110,7 +151,7 @@
   function buildTargets() {
     targetEntities.forEach((entity) => entity.remove());
     targetEntities = [];
-    const entities = content.targets.map((item, index) => {
+    const entities = targetItems.map((item, index) => {
       const entity = document.createElement('a-entity');
       entity.setAttribute('mindar-image-target', `targetIndex: ${index}`);
       const card = document.createElement('a-entity');
@@ -133,7 +174,7 @@
       entity.addEventListener('targetLost', () => {
         detectedTargets.delete(item.id);
         if (active) {
-          const remaining = content.targets.find((target) => detectedTargets.has(target.id));
+          const remaining = targetItems.find((target) => detectedTargets.has(target.id));
           setStatus(remaining ? `${remaining.title} · Marcador reconocido` : 'Marcador fuera de vista · seguí el recorrido');
         }
       });
@@ -211,7 +252,7 @@
       await waitForScene();
       if (closeRequested) return;
       const targets = buildTargets();
-      targets.forEach(({ card }, index) => drawOfficeCard(card, content.targets[index]));
+      targets.forEach(({ card }, index) => drawOfficeCard(card, targetItems[index]));
 
       // Configuración del componente MindAR Image Tracking en la escena A-Frame
       scene.setAttribute('mindar-image', {
@@ -223,7 +264,7 @@
         filterBeta: 0.01,
         warmupTolerance: 5,
         missTolerance: 12,
-        maxTrack: content.targets.length
+        maxTrack: targetItems.length
       });
 
       // Escucha cuando la cámara y MindAR están listos para operar

@@ -21,7 +21,11 @@ El GIF de la portada no lee un QR. Es una ayuda visual y un acceso táctil a la 
 | `workplace.css` | Diseño de la bienvenida y de la interfaz que aparece sobre la cámara. |
 | `workplace.js` | Inicio y cierre de cámara, reconocimiento del marcador y construcción del fondo de la tarjeta AR. |
 | `workplace-content.js` | Plantilla: archivo `.mind` conjunto y textos de cada tarjeta. Edita aquí las experiencias. |
-| `assets/recorrido.mind` | Marcador conjunto compilado para todas las imágenes del recorrido. |
+| `assets/recorrido.mind` | Archivo conjunto activo, con 13 objetivos. |
+| `assets/targets_ofi2.mind` | 3 objetivos de la oficina 2, incluidos en el archivo conjunto. |
+| `assets/targets_entrada.mind` | 4 objetivos de la entrada, incluidos en el archivo conjunto. |
+| `assets/targets_ofiFran.mind` | 4 objetivos de la oficina de Fran, incluidos en el archivo conjunto. |
+| `assets/termica.mind`, `assets/cuadros_color.mind` | 2 objetivos originales del recorrido, incluidos en el archivo conjunto. |
 | `assets/termica.jpg`, `assets/cuadrados_color.jpg` | Fotos originales que deben mostrarse a la cámara. |
 | `assets/qr-scan.gif` | Animación del escáner en la portada y en la pantalla de cámara. |
 | `assets/ars_scan.svg` | Ilustración vectorial de la pantalla de bienvenida. |
@@ -113,9 +117,9 @@ Los ajustes `filterMinCF`, `filterBeta`, `warmupTolerance` y `missTolerance` con
 
 ## Plantilla para agregar marcadores al recorrido
 
-1. Reúne todas las fotos objetivo y compílalas juntas en MindAR Image Compiler. Descarga el resultado como `assets/recorrido.mind`.
-2. En `workplace-content.js`, conserva las entradas existentes y agrega una entrada a `targets` por cada foto nueva. Mantén el mismo orden que las fotos usadas al compilar: ese orden determina los índices.
-3. Cambia `title`, las cuatro entradas de `lines`, `footer`, `accent`, `background` y `visual`. `visual` puede ser `safety` o `palette`; se puede ampliar para crear nuevos motivos. No hace falta agregar un selector ni modificar el HTML.
+1. Reúne todas las fotos objetivo de cada área y compílalas juntas en MindAR Image Compiler. Descarga el resultado como `assets/recorrido.mind`. Si partes de `.mind` ya compilados, conserva el orden de sus objetivos al unirlos y en `groups`.
+2. En `workplace-content.js`, cada grupo indica el `.mind` de origen y contiene un elemento de texto por cada objetivo que aporta. Conserva el orden de grupos y objetivos usado al compilar: determina los índices.
+3. Edita el título, las cuatro líneas, el pie, los colores y el motivo visual de cada objetivo. No hace falta agregar un selector ni modificar el HTML.
 4. Al sumar otra imagen, vuelve a compilar el archivo conjunto con todas las imágenes anteriores y la nueva, y reemplaza `assets/recorrido.mind`.
 
 Para actualizar el contenido sin cambiar imágenes ni cantidad, basta con editar los textos de `workplace-content.js`. Para añadir imágenes, recompila el `.mind` conjunto y agrega su entrada de texto en esa lista.
@@ -133,4 +137,4 @@ Después abre `http://localhost:8000/` en el navegador. En el teléfono, el siti
 
 ## Alcance actual
 
-Esta versión reconoce dos imágenes en una sesión continua. El tablero eléctrico muestra una tarjeta de seguridad en tonos ámbar con un pictograma de advertencia; los cuadros de colores muestran una tarjeta de diseño en tonos rosa con una paleta de muestras. El GIF de la portada tampoco lee un QR: su enlace simula el acceso hasta publicar la dirección definitiva en el QR físico.
+Esta versión reconoce 13 objetivos en una sesión continua. Cada objetivo muestra una tarjeta propia; sus títulos, textos y estilos se organizan por archivo original en `workplace-content.js`. La entrada presenta Clarolab y sus servicios de desarrollo, testing y seguridad; la oficina 2 destaca las pasantías y el ambiente de equipo; y la oficina de Fran agradece el espacio y el acompañamiento. El GIF de la portada tampoco lee un QR: su enlace simula el acceso hasta publicar la dirección definitiva en el QR físico.
