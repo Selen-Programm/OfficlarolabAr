@@ -12,7 +12,7 @@
   const scene = document.getElementById('arScene');
   const status = document.getElementById('arStatus');
   const content = window.WORKPLACE_CONTENT;
-  const targetItems = content.groups.flatMap((group) => group.targets);
+  const routeGroups = content.groups;
   const detectedTargets = new Set();
 
   // Variables de control de estado de la aplicación
@@ -22,6 +22,9 @@
   let closeRequested = false;   // Controla si el usuario solicitó cerrar durante la carga
   let cardBackgroundReady = new WeakSet(); // Evita redibujar los fondos de las tarjetas
   let targetEntities = [];
+  let currentGroupIndex = 0;
+  let routeAdvanceTimer = 0;
+  let switchingGroup = false;
 
   // 2. GENERACIÓN DE ELEMENTOS 3D (THREE.JS)
   //  * Dibuja de forma procedural la tarjeta de información 3D de la oficina utilizando Three.js.
@@ -148,16 +151,18 @@
     });
   }
 
-  function buildTargets() {
+  function buildTargets(group, groupIndex) {
     targetEntities.forEach((entity) => entity.remove());
     targetEntities = [];
-    const entities = targetItems.map((item, index) => {
+    const entities = Array.from({ length: group.targetCount }, (_, index) => {
+      const item = group;
       const entity = document.createElement('a-entity');
       entity.setAttribute('mindar-image-target', `targetIndex: ${index}`);
       const card = document.createElement('a-entity');
       card.setAttribute('position', '-.02 .2 .08');
       entity.appendChild(card);
-      createText(card, `${item.id}-title`, item.title, '.73', '0 .34 .025', item.accent, '2');
+      const targetId = `${item.id}-${index}`;
+      createText(card, `${targetId}-title`, item.title, '.73', '0 .34 .025', item.accent, '2');
       addOfficeVisual(card, item);
       const divider = document.createElement('a-plane');
       divider.setAttribute('position', '0 .22 .024');
@@ -165,17 +170,20 @@
       divider.setAttribute('height', '.004');
       divider.setAttribute('material', `shader: flat; color: ${item.accent}`);
       card.appendChild(divider);
-      item.lines.forEach((line, lineIndex) => createText(card, `${item.id}-line-${lineIndex + 1}`, line, '.68', `0 ${[.09, -.02, -.13, -.24][lineIndex]} .025`));
-      createText(card, `${item.id}-footer`, item.footer, '.45', '0 -.43 .025', item.accent, '1');
+      item.lines.forEach((line, lineIndex) => createText(card, `${targetId}-line-${lineIndex + 1}`, line, '.68', `0 ${[.09, -.02, -.13, -.24][lineIndex]} .025`));
+      createText(card, `${targetId}-footer`, item.footer, '.45', '0 -.43 .025', item.accent, '1');
       entity.addEventListener('targetFound', () => {
-        detectedTargets.add(item.id);
-        setStatus(`${item.title} · Marcador reconocido`);
+        if (groupIndex !== currentGroupIndex || !active) return;
+        detectedTargets.add(targetId);
+        window.clearTimeout(routeAdvanceTimer);
+        setStatus(`Punto ${groupIndex + 1} de ${routeGroups.length} · ${item.title}`);
       });
       entity.addEventListener('targetLost', () => {
-        detectedTargets.delete(item.id);
-        if (active) {
-          const remaining = targetItems.find((target) => detectedTargets.has(target.id));
-          setStatus(remaining ? `${remaining.title} · Marcador reconocido` : 'Marcador fuera de vista · seguí el recorrido');
+        detectedTargets.delete(targetId);
+        if (active && groupIndex === currentGroupIndex && detectedTargets.size === 0) {
+          setStatus(`Punto ${groupIndex + 1} fuera de vista · avanzando al próximo`);
+          window.clearTimeout(routeAdvanceTimer);
+          routeAdvanceTimer = window.setTimeout(advanceRouteGroup, content.lostAdvanceMs);
         }
       });
       scene.insertBefore(entity, scene.querySelector('a-camera'));
@@ -189,6 +197,52 @@
   // Actualiza el texto de estado en pantalla para guiar al usuario.
   function setStatus(message) {
     status.textContent = message;
+  }
+
+  function scheduleIdleAdvance() {
+    window.clearTimeout(routeAdvanceTimer);
+    routeAdvanceTimer = window.setTimeout(advanceRouteGroup, content.idleAdvanceMs);
+  }
+
+  async function advanceRouteGroup() {
+    if (!active || closeRequested || switchingGroup) return;
+    switchingGroup = true;
+    window.clearTimeout(routeAdvanceTimer);
+    detectedTargets.clear();
+
+    const previousController = arSystem?.controller;
+    previousController?.stopProcessVideo();
+    previousController?.dispose();
+    arSystem.anchorEntities = [];
+
+    currentGroupIndex = (currentGroupIndex + 1) % routeGroups.length;
+    const group = routeGroups[currentGroupIndex];
+    setStatus(`Cargando punto ${currentGroupIndex + 1} de ${routeGroups.length} · ${group.title}`);
+
+    try {
+      const targets = buildTargets(group, currentGroupIndex);
+      targets.forEach(({ card }) => drawOfficeCard(card, group));
+      arSystem.imageTargetSrc = group.file;
+      arSystem.maxTrack = 1;
+
+      await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+      if (closeRequested) return;
+      if (typeof arSystem._startAR !== 'function') {
+        throw new Error('La versión de MindAR no permite cambiar de estación sin detener la cámara.');
+      }
+      await arSystem._startAR();
+      if (active && !closeRequested) {
+        setStatus(`Punto ${currentGroupIndex + 1} de ${routeGroups.length} · ${group.title} · enfoca su cartel`);
+        scheduleIdleAdvance();
+      }
+    } catch (error) {
+      if (!closeRequested) {
+        setStatus(`No se pudo cargar ${group.file}. Revisá el archivo y la conexión.`);
+        routeAdvanceTimer = window.setTimeout(advanceRouteGroup, 5000);
+      }
+    } finally {
+      switchingGroup = false;
+    }
   }
 
   /** Oculta la pantalla de bienvenida y muestra el visor de la cámara. */
@@ -235,10 +289,12 @@
     if (active || starting) return;
     closeRequested = false;
     detectedTargets.clear();
+    currentGroupIndex = 0;
+    switchingGroup = false;
     starting = true;
     startButton.disabled = true;
-    showScanner('Preparando cámara…');
-    const content = window.WORKPLACE_CONTENT;
+    showScanner(`Preparando punto 1 de ${routeGroups.length}…`);
+    const group = routeGroups[currentGroupIndex];
 
     // Validación de seguridad: getUserMedia requiere HTTPS o localhost obligatoriamente
     if (!window.isSecureContext || !navigator.mediaDevices?.getUserMedia) {
@@ -251,12 +307,12 @@
     try {
       await waitForScene();
       if (closeRequested) return;
-      const targets = buildTargets();
-      targets.forEach(({ card }, index) => drawOfficeCard(card, targetItems[index]));
+      const targets = buildTargets(group, currentGroupIndex);
+      targets.forEach(({ card }) => drawOfficeCard(card, group));
 
       // Configuración del componente MindAR Image Tracking en la escena A-Frame
       scene.setAttribute('mindar-image', {
-        imageTargetSrc: content.mind,
+        imageTargetSrc: group.file,
         autoStart: false,
         uiLoading: 'no',
         uiScanning: 'no',
@@ -264,12 +320,15 @@
         filterBeta: 0.01,
         warmupTolerance: 5,
         missTolerance: 12,
-        maxTrack: targetItems.length
+        maxTrack: 1
       });
 
       // Escucha cuando la cámara y MindAR están listos para operar
       scene.addEventListener('arReady', () => {
-        if (!closeRequested && detectedTargets.size === 0) setStatus('Cámara lista · seguí el recorrido y enfocá cualquiera de las imágenes');
+        if (closeRequested) return;
+        active = true;
+        setStatus(`Punto 1 de ${routeGroups.length} · ${group.title} · enfoca su cartel`);
+        scheduleIdleAdvance();
       }, { once: true });
 
       // Manejo de errores específicos del sistema AR/Cámara
@@ -289,11 +348,7 @@
       if (!arSystem) throw new Error('MindAR no se pudo cargar. Revisá tu conexión.');
 
       setStatus('Activando cámara…');
-      await arSystem.start(); // Inicia el flujo de video y el procesamiento de imagen
-
-      if (closeRequested) return;
-      active = true;
-      if (detectedTargets.size === 0) setStatus('Cámara lista · seguí el recorrido y enfocá cualquiera de las imágenes');
+      arSystem.start(); // Inicia la cámara; el evento arReady marca el comienzo del recorrido.
 
     } catch (error) {
       if (closeRequested) return;
@@ -301,7 +356,7 @@
 
       // Clasificación de errores comunes para mostrar mensajes amigables al usuario
       if (/target|mind|fetch|404|load|network|file/i.test(message)) {
-        setStatus(`No se pudo cargar ${content.mind}. Revisá el archivo y la conexión.`);
+        setStatus(`No se pudo cargar ${group.file}. Revisá el archivo y la conexión.`);
       } else if (/permission|denied|notallowed|secure|camera/i.test(message)) {
         setStatus('La cámara necesita permiso y una página servida desde HTTPS o localhost.');
       } else {
@@ -326,20 +381,18 @@
   async function closeAR() {
     if (!scanPanel.classList.contains('is-visible')) return;
     closeRequested = true;
+    active = false;
+    window.clearTimeout(routeAdvanceTimer);
+    switchingGroup = false;
     detectedTargets.clear();
-    const currentSystem = arSystem || scene.systems['mindar-image-system'];
 
     if (starting) {
       restoreWelcome();
-      try { await currentSystem?.stop(); } catch { /* Todavía no había arrancado del todo */ }
       return;
     }
 
-    active = false;
     restoreWelcome();
-
-    // Detiene el streaming de la cámara y libera el sistema MindAR
-    try { await currentSystem?.stop(); } catch { /* La cámara ya estaba detenida */ }
+    // Quitar el componente detiene una sola vez el flujo de cámara y el controlador.
     scene.removeAttribute('mindar-image');
     arSystem = null;
     startButton.disabled = false;

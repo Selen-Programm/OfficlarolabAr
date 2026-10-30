@@ -6,7 +6,7 @@ Esta guía explica qué hace cada archivo y cómo se conectan las dos pantallas.
 
 1. `index.html` muestra la portada “Tour of the offices”. El GIF es un enlace: al tocarlo, abre `workplace.html`.
 2. En `workplace.html`, el usuario pulsa **Comenzar el recorrido**. En ese momento el navegador solicita permiso para usar la cámara.
-3. MindAR busca continuamente todas las imágenes del recorrido. Al reconocer una, muestra su tarjeta de información; no hay que elegir un marcador.
+3. El recorrido carga un `.mind` a la vez. Al reconocer uno de sus carteles, muestra la información de esa estación; cuando se deja el cartel o pasa el tiempo de espera, avanza a la estación siguiente con la cámara activa.
 4. El botón **×** detiene el escáner y vuelve a la pantalla de bienvenida. También se puede cerrar con la tecla Escape.
 
 El GIF de la portada no lee un QR. Es una ayuda visual y un acceso táctil a la segunda pantalla. Para que el QR impreso en la entrada funcione, su contenido debe ser la dirección pública de `workplace.html` una vez publicado el sitio.
@@ -20,12 +20,11 @@ El GIF de la portada no lee un QR. Es una ayuda visual y un acceso táctil a la 
 | `workplace.html` | Bienvenida, escena de A-Frame, tarjeta AR y controles del escáner. |
 | `workplace.css` | Diseño de la bienvenida y de la interfaz que aparece sobre la cámara. |
 | `workplace.js` | Inicio y cierre de cámara, reconocimiento del marcador y construcción del fondo de la tarjeta AR. |
-| `workplace-content.js` | Plantilla: archivo `.mind` conjunto y textos de cada tarjeta. Edita aquí las experiencias. |
-| `assets/recorrido.mind` | Archivo conjunto activo, con 13 objetivos. |
-| `assets/targets_ofi2.mind` | 3 objetivos de la oficina 2, incluidos en el archivo conjunto. |
-| `assets/targets_entrada.mind` | 4 objetivos de la entrada, incluidos en el archivo conjunto. |
-| `assets/targets_ofiFran.mind` | 4 objetivos de la oficina de Fran, incluidos en el archivo conjunto. |
-| `assets/termica.mind`, `assets/cuadros_color.mind` | 2 objetivos originales del recorrido, incluidos en el archivo conjunto. |
+| `workplace-content.js` | Orden de las estaciones, archivo `.mind` independiente y tarjeta correspondiente a cada una. |
+| `assets/targets_entrada.mind` | Marcador independiente de la entrada (4 imágenes internas). |
+| `assets/targets_ofi2.mind` | Marcador independiente de la oficina 2 (3 imágenes internas). |
+| `assets/targets_ofiFran.mind` | Marcador independiente de la oficina de Fran (4 imágenes internas). |
+| `assets/termica.mind`, `assets/cuadros_color.mind` | Marcadores independientes de tablero y ambiente de oficina. |
 | `assets/termica.jpg`, `assets/cuadrados_color.jpg` | Fotos originales que deben mostrarse a la cámara. |
 | `assets/qr-scan.gif` | Animación del escáner en la portada y en la pantalla de cámara. |
 | `assets/ars_scan.svg` | Ilustración vectorial de la pantalla de bienvenida. |
@@ -53,11 +52,11 @@ La página contiene dos capas principales:
 - `welcomePanel`: bienvenida, botón de inicio e ilustración.
 - `scanPanel`: escena AR y controles de cámara.
 
-`workplace.js` crea un objetivo `mindar-image-target` por cada elemento de `targets` en `workplace-content.js`. El índice de cada elemento sigue el orden de las imágenes al compilar `recorrido.mind`.
+`workplace.js` crea los objetivos del `.mind` de la estación actual. Sus índices son locales a ese archivo. Cada estación tiene una tarjeta propia definida en `workplace-content.js`; al cambiar de estación se descartan sus objetivos y se cargan los del archivo siguiente.
 
 Cada objetivo recibe una tarjeta 3D con su título, cuatro líneas y pie. Los valores se generan desde la entrada correspondiente de `workplace-content.js`.
 
-Los textos, los índices y el archivo `.mind` conjunto se definen en `workplace-content.js`. Todos los objetivos quedan activos al iniciar el escáner. También se cargan dos bibliotecas desde Internet:
+`workplace-content.js` define el orden del recorrido y relaciona cada archivo `.mind` con su tarjeta. Solo se analiza una estación a la vez. También se cargan dos bibliotecas desde Internet:
 
 - **A-Frame 1.5.0** crea la escena 3D que se superpone a la cámara.
 - **MindAR 1.2.5** obtiene la cámara y busca la imagen objetivo.
@@ -87,7 +86,7 @@ Al principio, el código guarda referencias a los botones, paneles, escena, obje
 - `active`: la cámara y el escáner ya están funcionando.
 - `starting`: el inicio todavía está en curso; evita abrir dos escáneres a la vez.
 - `closeRequested`: el usuario pidió salir mientras la cámara se estaba iniciando.
-- `detectedTargets`: conjunto de imágenes que MindAR mantiene a la vista.
+- `detectedTargets`: objetivos del `.mind` de la estación actual que MindAR mantiene a la vista.
 
 `cardBackgroundReady` evita dibujar dos veces el fondo de cada tarjeta.
 
@@ -105,24 +104,23 @@ Los eventos `targetFound` y `targetLost` se disparan en cada objetivo. El primer
 
 ### Recorrido de inicio
 
-Al pulsar el botón, `openAR()` verifica que el navegador permita cámara. Luego crea los objetivos de todas las entradas de `workplace-content.js`, configura MindAR con el archivo conjunto y llama a `arSystem.start()`. `maxTrack` se ajusta a la cantidad de objetivos configurados.
+Al pulsar el botón, `openAR()` carga el `.mind` de la primera estación y abre la cámara. Cuando el cartel sale del visor, el código carga el próximo archivo en el mismo flujo de cámara. Si no se encuentra un cartel, cambia de estación después del tiempo de espera.
 
 `requestAnimationFrame` da dos ciclos al navegador para procesar los cambios de A-Frame antes de pedir el sistema MindAR. El bloque `finally` siempre libera el estado de “iniciando”. Si mientras tanto se pidió cerrar, detiene el sistema y quita el componente AR.
 
-Los ajustes `filterMinCF`, `filterBeta`, `warmupTolerance` y `missTolerance` controlan el filtrado y la estabilidad del seguimiento. `maxTrack` se iguala al número de imágenes para permitir el seguimiento simultáneo. MindAR recomienda limitar esa cantidad porque muchos objetivos simultáneos pueden afectar el rendimiento.
+Los ajustes `filterMinCF`, `filterBeta`, `warmupTolerance` y `missTolerance` controlan el filtrado y la estabilidad del seguimiento. `maxTrack: 1` limita el seguimiento a un cartel por vez.
 
-## Recursos y marcador
+## Estaciones y marcadores
 
-`recorrido.mind` reúne los datos calculados por MindAR para todas las imágenes objetivo. Se recompila el conjunto cuando se agrega o reemplaza una imagen.
+Cada estación mantiene su propio `.mind`; no se fusionan dentro de un archivo `recorrido.mind`. Los archivos de entrada, oficina 2, oficina de Fran, tablero y cuadros se cargan secuencialmente en el orden de `workplace-content.js`. Si el usuario deja de enfocar un cartel, el escáner avanza a la estación siguiente manteniendo la cámara encendida. Si no detecta nada, avanza luego de 30 segundos.
 
-## Plantilla para agregar marcadores al recorrido
+## Plantilla para agregar o actualizar una estación
 
-1. Reúne todas las fotos objetivo de cada área y compílalas juntas en MindAR Image Compiler. Descarga el resultado como `assets/recorrido.mind`. Si partes de `.mind` ya compilados, conserva el orden de sus objetivos al unirlos y en `groups`.
-2. En `workplace-content.js`, cada grupo indica el `.mind` de origen y contiene un elemento de texto por cada objetivo que aporta. Conserva el orden de grupos y objetivos usado al compilar: determina los índices.
-3. Edita el título, las cuatro líneas, el pie, los colores y el motivo visual de cada objetivo. No hace falta agregar un selector ni modificar el HTML.
-4. Al sumar otra imagen, vuelve a compilar el archivo conjunto con todas las imágenes anteriores y la nueva, y reemplaza `assets/recorrido.mind`.
+1. Coloca el `.mind` independiente en `assets` y añade una entrada a `groups` en `workplace-content.js` con su ruta, cantidad de imágenes internas y tarjeta.
+2. Conserva el orden en que quieres recorrer las estaciones. Cada objetivo interno de un mismo `.mind` muestra la tarjeta de ese archivo.
+3. Edita el título, las cuatro líneas, el pie, los colores y el motivo visual.
 
-Para actualizar el contenido sin cambiar imágenes ni cantidad, basta con editar los textos de `workplace-content.js`. Para añadir imágenes, recompila el `.mind` conjunto y agrega su entrada de texto en esa lista.
+No hace falta compilar ni reemplazar un `.mind` conjunto. Para actualizar una estación, reemplaza únicamente su `.mind` y su texto.
 ## Cómo abrirlo para usar la cámara
 
 La cámara normalmente requiere un contexto seguro. Abre el sitio desde `localhost` durante el desarrollo o publícalo con HTTPS; abrir el HTML directamente desde una carpeta (`file://`) puede bloquear permisos o la carga del marcador. También se necesita conexión a Internet para descargar A-Frame y MindAR.
@@ -137,4 +135,4 @@ Después abre `http://localhost:8000/` en el navegador. En el teléfono, el siti
 
 ## Alcance actual
 
-Esta versión reconoce 13 objetivos en una sesión continua. Cada objetivo muestra una tarjeta propia; sus títulos, textos y estilos se organizan por archivo original en `workplace-content.js`. La entrada presenta Clarolab y sus servicios de desarrollo, testing y seguridad; la oficina 2 destaca las pasantías y el ambiente de equipo; y la oficina de Fran agradece el espacio y el acompañamiento. El GIF de la portada tampoco lee un QR: su enlace simula el acceso hasta publicar la dirección definitiva en el QR físico.
+Esta versión recorre cinco archivos `.mind` independientes, de a uno por vez. La entrada presenta Clarolab; la oficina 2 cuenta la experiencia de pasantías y el ambiente del equipo; la oficina de Fran agradece el espacio y el acompañamiento. El tablero y los cuadros tienen tarjetas propias. El GIF de la portada tampoco lee un QR: su enlace simula el acceso hasta publicar la dirección definitiva en el QR físico.
