@@ -4,7 +4,7 @@ Esta guía explica qué hace cada archivo y cómo se conectan las dos pantallas.
 
 ## Qué hace la web
 
-1. `index.html` muestra la portada “Tour of the offices”. El GIF es un enlace: al tocarlo, abre `workplace.html`.
+1. `index.html` muestra la portada “Recorrido Clarolab”. El GIF es un enlace: al tocarlo, abre `workplace.html`.
 2. En `workplace.html`, el usuario pulsa **Comenzar el recorrido**. En ese momento el navegador solicita permiso para usar la cámara.
 3. El recorrido carga un `.mind` a la vez. Al reconocer uno de sus carteles, muestra la información de esa estación; cuando se deja el cartel o pasa el tiempo de espera, avanza a la estación siguiente con la cámara activa.
 4. El botón **×** detiene el escáner y vuelve a la pantalla de bienvenida. También se puede cerrar con la tecla Escape.
@@ -28,6 +28,7 @@ El GIF de la portada no lee un QR. Es una ayuda visual y un acceso táctil a la 
 | `assets/termica.jpg`, `assets/cuadrados_color.jpg` | Fotos originales que deben mostrarse a la cámara. |
 | `assets/qr-scan.gif` | Animación del escáner en la portada y en la pantalla de cámara. |
 | `assets/ars_scan.svg` | Ilustración vectorial de la pantalla de bienvenida. |
+| `assets/panelpruea.png` | Fondo visual de las tarjetas AR de cada estación. |
 | `assets/Clarolab.svg` | Logo vectorial disponible en los recursos. Las páginas actuales no lo cargan directamente. |
 
 ## Cómo se conectan HTML, CSS y JavaScript
@@ -54,7 +55,7 @@ La página contiene dos capas principales:
 
 `workplace.js` crea los objetivos del `.mind` de la estación actual. Sus índices son locales a ese archivo. Cada estación tiene una tarjeta propia definida en `workplace-content.js`; al cambiar de estación se descartan sus objetivos y se cargan los del archivo siguiente.
 
-Cada objetivo recibe una tarjeta 3D con su título, cuatro líneas y pie. Los valores se generan desde la entrada correspondiente de `workplace-content.js`.
+Cada objetivo recibe una tarjeta 3D sobre el panel PNG de Clarolab, con título, cuatro líneas y pie. El texto se genera desde la entrada correspondiente de `workplace-content.js`.
 
 `workplace-content.js` define el orden del recorrido y relaciona cada archivo `.mind` con su tarjeta. Solo se analiza una estación a la vez. También se cargan dos bibliotecas desde Internet:
 
@@ -88,16 +89,14 @@ Al principio, el código guarda referencias a los botones, paneles, escena, obje
 - `closeRequested`: el usuario pidió salir mientras la cámara se estaba iniciando.
 - `detectedTargets`: objetivos del `.mind` de la estación actual que MindAR mantiene a la vista.
 
-`cardBackgroundReady` evita dibujar dos veces el fondo de cada tarjeta.
-
 ### Funciones
 
-- **`drawOfficeCard()`** dibuja el panel 3D detrás del texto. Usa `THREE.Shape`, `ShapeGeometry` y `MeshBasicMaterial`: el color exterior y el fondo cambian según cada oficina. `addOfficeVisual()` agrega el símbolo de seguridad o las muestras de color correspondientes.
+- **`addPanelBackground()`** coloca el panel PNG de Clarolab detrás del texto de cada tarjeta.
 - **`setStatus(message)`** cambia el texto que se ve en la parte central del escáner.
 - **`showScanner(message)`** oculta la bienvenida, hace visible el visor y muestra el estado inicial.
 - **`restoreWelcome()`** oculta el visor, devuelve la bienvenida y enfoca el botón de inicio.
 - **`waitForScene()`** espera el evento `loaded` de A-Frame. Si la escena no queda lista en diez segundos, devuelve un error en vez de dejar la pantalla esperando para siempre.
-- **`openAR()`** valida el acceso a la cámara, espera a que la escena esté lista, dibuja el fondo del panel, conecta el archivo `.mind` con MindAR y arranca la cámara. También actualiza el mensaje cuando la foto se encuentra, se pierde o MindAR devuelve un error.
+- **`openAR()`** valida el acceso a la cámara, espera a que la escena esté lista, conecta el archivo `.mind` con MindAR y arranca la cámara. También actualiza el mensaje cuando la foto se encuentra, se pierde o MindAR devuelve un error.
 - **`closeAR()`** cierra la cámara, retira el componente `mindar-image` y vuelve a la bienvenida. Si el cierre ocurre durante el inicio, marca la solicitud para que la limpieza se complete al terminar esa operación.
 
 Los eventos `targetFound` y `targetLost` se disparan en cada objetivo. El primero indica que la imagen entró en cámara; el segundo, que dejó de verse. `arReady` y `arError` pertenecen al sistema MindAR.

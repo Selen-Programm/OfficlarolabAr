@@ -466,23 +466,25 @@ h1 span {
 
 .finder i {
   position: absolute;
-  top: 50%;
+  top: 5%;
   left: 5%;
   right: 5%;
   height: 1px;
   background: linear-gradient(90deg, transparent, var(--green), transparent);
   box-shadow: 0 0 12px var(--green);
-  animation: sweep 2.4s ease-in-out infinite alternate;
+  animation: sweep 2.8s linear infinite;
 }
 
 .scan-message {
   display: flex;
   align-items: center;
+  gap: .35rem;
   margin-top: 1.3rem;
   padding: .7rem .9rem;
   color: white;
   background: rgba(4, 12, 9, .82);
-  border: 1px solid rgba(255, 255, 255, .16);
+  border: 1px solid rgba(0, 230, 160, .3);
+  border-radius: 999px;
   font-size: .75rem;
   backdrop-filter: blur(10px);
 }
@@ -535,7 +537,7 @@ body.ar-active {
 
 @keyframes sweep {
   to {
-    transform: translateY(90px);
+    top: 95%;
   }
 }
 

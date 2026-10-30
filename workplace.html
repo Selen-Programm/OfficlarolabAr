@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#050806">
   <meta name="description" content="Recorrido de realidad aumentada por las oficinas de Clarolab.">
-  <title>Workplace paradise · Clarolab</title>
+  <title>Recorrido por Clarolab</title>
   <link rel="stylesheet" href="./workplace.css">
   <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
@@ -16,7 +16,7 @@
 <body>
   <main class="tour-app">
     <header class="site-header">
-    <a class="brand" href="#inicio" aria-label="Clarolab, Archivo Vivo">
+    <a class="brand" href="./index.html" aria-label="Volver al inicio de Clarolab">
       <span class="brand-mark">C/</span><span>CLAROLAB</span>
     </a>
     <div class="header-note"> OPEN HOUSE · JUNÍN, ARGENTINA</div>
@@ -30,8 +30,8 @@
     <section class="welcome-panel" id="welcomePanel" aria-labelledby="page-title">
       <div class="welcome-copy">
         <div class="eyebrow"><span></span> UN RECORRIDO POR NUESTRO ESPACIO</div>
-        <h1 id="page-title">Workplace<br><span>paradise.</span></h1>
-        <p>Las mejores ideas también necesitan un buen lugar donde encontrarse. Bienvenido a las oficinas de Clarolab.
+        <h1 id="page-title">Un espacio<br><span>para crear.</span></h1>
+        <p>Las buenas ideas también necesitan un lugar donde encontrarse. Te damos la bienvenida a las oficinas de Clarolab.
         </p>
         <button class="start-button" id="startAR" type="button"><span class="button-icon">⌁</span> Comenzar el recorrido
           <span class="button-arrow">↗</span></button>
@@ -42,7 +42,7 @@
         <div class="visual-ring ring-one"></div>
         <div class="visual-ring ring-two"></div>
         <img src="./assets/ars_scan.svg" alt="Escáner de realidad aumentada">
-        <div class="visual-caption"><span>01 / PRIMERA PARADA</span><b>Un espacio para crear.</b></div>
+        <div class="visual-caption"><span>01 / PRIMERA PARADA</span><b>Ideas que se hacen en equipo.</b></div>
       </div>
       <div class="welcome-footer"><span>01 — BIENVENIDA</span><span>COMIENZA EL RECORRIDO <b>↓</b></span></div>
     </section>
@@ -59,7 +59,7 @@
         <div class="finder" aria-hidden="true"><span></span><span></span><span></span><span></span><i></i></div>
         <div class="scan-message" role="status" aria-live="polite"><span class="scan-dot"></span><span
             id="arStatus">Apuntá al marcador de la oficina</span></div>
-        <div class="scan-bottom"><img src="./assets/qr-scan.gif" alt=""><span>Recorrido por estaciones<br><small>Enfocá el cartel actual; al dejarlo, avanza al próximo punto</small></span></div>
+        <div class="scan-bottom"><img src="./assets/qr-scan.gif" alt=""><span>Recorrido por estaciones<br><small>Enfocá el cartel. Al dejar de verlo, avanzaremos al siguiente punto.</small></span></div>
       </div>
     </section>
   </main>

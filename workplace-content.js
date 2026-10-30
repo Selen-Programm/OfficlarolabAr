@@ -4,22 +4,22 @@ window.WORKPLACE_CONTENT = {
   groups: [
     {
       id: 'entrada', file: './assets/targets_entrada.mind', targetCount: 4,
-      title: 'BIENVENIDOS', lines: ['Clarolab · Junín', 'Tecnología con mirada global', 'Desarrollo, testing y seguridad', 'Personas en el centro'],
+      title: 'BIENVENIDOS', lines: ['Tecnología con alcance global', 'Desarrollo de software', 'Testing, calidad y seguridad', 'Personas en el centro'],
       footer: 'DE JUNÍN AL MUNDO', accent: '#00e6a0', background: '#07140f', visual: 'welcome'
     },
     {
       id: 'oficina2', file: './assets/targets_ofi2.mind', targetCount: 3,
-      title: 'OFICINA DE TRABAJO #1', lines: ['Proyectos de pasantías escolares', 'Recibimiento con equipos', 'Computadoras de trabajo', 'Aprender haciendo, en equipo'],
+      title: 'OFICINA N.º 1', lines: ['Pasantías escolares', 'Equipos para aprender y crear', 'Computadoras de trabajo', 'Aprendizaje en equipo'],
       footer: 'CLAROLAB · JUNÍN', accent: '#55c8ff', background: '#0b141a', visual: 'workstation'
     },
     {
       id: 'fran', file: './assets/targets_ofiFran.mind', targetCount: 4,
-      title: 'FRAN · JEFE DE PROYECTO', lines: ['Nos brindó un espacio', 'Nos recibió en su oficina', 'Compartió tiempo y experiencia', 'Gracias por acompañarnos'],
+      title: 'FRAN', lines: ['Jefe de proyecto y referente', 'Nos brindó un espacio', 'Compartió tiempo y experiencia', 'Gracias por acompañarnos'],
       footer: 'UN ESPACIO PARA APRENDER', accent: '#c4a1ff', background: '#120d19', visual: 'fran'
     },
     {
       id: 'termica', file: './assets/termica.mind', targetCount: 1,
-      title: 'SEGURIDAD', lines: ['Tablero eléctrico', 'Riesgo eléctrico', 'Solo personal autorizado', 'No manipular sin capacitación'],
+      title: 'SEGURIDAD', lines: ['Tablero eléctrico', 'Riesgo eléctrico', 'Solo personal autorizado', 'No manipular sin formación'],
       footer: 'CLAROLAB · JUNÍN', accent: '#ffc247', background: '#17130b', visual: 'safety'
     },
     {

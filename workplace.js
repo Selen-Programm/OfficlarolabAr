@@ -20,57 +20,19 @@
   let active = false;           // Indica si el AR está corriendo activamente
   let starting = false;         // Evita múltiples clics mientras se inicializa
   let closeRequested = false;   // Controla si el usuario solicitó cerrar durante la carga
-  let cardBackgroundReady = new WeakSet(); // Evita redibujar los fondos de las tarjetas
   let targetEntities = [];
   let currentGroupIndex = 0;
   let routeAdvanceTimer = 0;
   let switchingGroup = false;
 
-  // 2. GENERACIÓN DE ELEMENTOS 3D (THREE.JS)
-  //  * Dibuja de forma procedural la tarjeta de información 3D de la oficina utilizando Three.js.
-  //  * Nota: En futuras actualizaciones se evaluará cambiar este formato por HTML/DOM o texturas optimizadas.
-  //
-  function drawOfficeCard(card, item) {
-    if (cardBackgroundReady.has(card)) return;
-
-    // Función auxiliar para crear formas poligonales (Shapes) en 2D
-    const shapeFor = (points) => {
-      const shape = new THREE.Shape();
-      shape.moveTo(points[0][0], points[0][1]);
-      points.slice(1).forEach(([x, y]) => shape.lineTo(x, y));
-      shape.closePath();
-      return shape;
-    };
-
-    // Coordenadas de los vértices para las capas exterior e interior de la tarjeta
-    const outerPoints = [[-.5, .55], [.32, .55], [.47, .4], [.47, -.55], [-.55, -.55]];
-    const innerPoints = [[-.485, .535], [.312, .535], [.455, .394], [.455, -.535], [-.535, -.535]];
-
-    // Función para crear capas planas (Mesh) con geometría y color personalizado
-    const makeLayer = (points, color, z) => {
-      const geometry = new THREE.ShapeGeometry(shapeFor(points));
-      const material = new THREE.MeshBasicMaterial({ color, side: THREE.DoubleSide });
-      const mesh = new THREE.Mesh(geometry, material);
-      mesh.position.z = z;
-      // renderOrder asegura que las capas se dibujen en el orden correcto de profundidad
-      mesh.renderOrder = z > 0 ? 2 : 1;
-      card.object3D.add(mesh);
-    };
-
-    // Construcción de las capas de fondo
-    makeLayer(outerPoints, item.accent, 0);   // Borde con color propio de esta oficina
-    makeLayer(innerPoints, item.background, .003);
-
-    // Creación del borde lineal decorativo superior
-    const offsetOutline = outerPoints.map(([x, y]) => new THREE.Vector3(x + .075, y + .055, -.008));
-    const outlineGeometry = new THREE.BufferGeometry().setFromPoints(offsetOutline);
-    const outline = new THREE.LineLoop(outlineGeometry, new THREE.LineBasicMaterial({
-      color: item.accent, transparent: true, opacity: .48
-    }));
-    outline.renderOrder = 1;
-    card.object3D.add(outline);
-
-    cardBackgroundReady.add(card);
+  // El fondo de cada tarjeta usa el panel gráfico de Clarolab que ya está en assets.
+  function addPanelBackground(card) {
+    const panel = document.createElement('a-plane');
+    panel.setAttribute('position', '0 0 0');
+    panel.setAttribute('width', '.72');
+    panel.setAttribute('height', '1.067');
+    panel.setAttribute('material', 'shader: flat; src: ./assets/panelpruea.png; transparent: true; side: double');
+    card.appendChild(panel);
   }
 
   function createText(parent, id, value, width, position, color = '#f4f7f5', letterSpacing = '') {
@@ -87,70 +49,6 @@
     parent.appendChild(text);
   }
 
-  function addOfficeVisual(card, item) {
-    if (item.visual === 'safety') {
-      const marker = document.createElement('a-cone');
-      marker.setAttribute('position', '-.32 .455 .04');
-      marker.setAttribute('radius-bottom', '.055');
-      marker.setAttribute('radius-top', '0');
-      marker.setAttribute('height', '.09');
-      marker.setAttribute('segments-radial', '3');
-      marker.setAttribute('color', item.accent);
-      card.appendChild(marker);
-      createText(card, `${item.id}-symbol`, '!', '.045', '-.32 .445 .055', item.background);
-      return;
-    }
-
-    if (item.visual === 'workstation') {
-      const monitor = document.createElement('a-plane');
-      monitor.setAttribute('position', '-.32 .455 .04');
-      monitor.setAttribute('width', '.12');
-      monitor.setAttribute('height', '.075');
-      monitor.setAttribute('material', `shader: flat; color: ${item.accent}`);
-      card.appendChild(monitor);
-      const screen = document.createElement('a-plane');
-      screen.setAttribute('position', '-.32 .455 .05');
-      screen.setAttribute('width', '.095');
-      screen.setAttribute('height', '.05');
-      screen.setAttribute('material', `shader: flat; color: ${item.background}`);
-      card.appendChild(screen);
-      return;
-    }
-
-    if (item.visual === 'team' || item.visual === 'fran') {
-      const count = item.visual === 'fran' ? 2 : 3;
-      for (let index = 0; index < count; index += 1) {
-        const person = document.createElement('a-sphere');
-        person.setAttribute('position', `${-.36 + index * .07} .47 .045`);
-        person.setAttribute('radius', '.018');
-        person.setAttribute('color', index === 1 ? item.accent : '#f4f7f5');
-        card.appendChild(person);
-        const shoulders = document.createElement('a-box');
-        shoulders.setAttribute('position', `${-.36 + index * .07} .425 .045`);
-        shoulders.setAttribute('width', '.045');
-        shoulders.setAttribute('height', '.025');
-        shoulders.setAttribute('depth', '.012');
-        shoulders.setAttribute('color', item.accent);
-        card.appendChild(shoulders);
-      }
-      return;
-    }
-
-    if (item.visual === 'learning' || item.visual === 'quality' || item.visual === 'security') {
-      createText(card, `${item.id}-symbol`, item.visual === 'quality' ? '✓' : item.visual === 'security' ? '◆' : '↗', '.09', '-.32 .45 .05', item.accent);
-      return;
-    }
-
-    ['#fa4f9b', '#ffbf45', '#46c7c2', '#6384ff'].forEach((color, index) => {
-      const swatch = document.createElement('a-plane');
-      swatch.setAttribute('position', `${-.38 + index * .075} .455 .04`);
-      swatch.setAttribute('width', '.055');
-      swatch.setAttribute('height', '.045');
-      swatch.setAttribute('material', `shader: flat; color: ${color}`);
-      card.appendChild(swatch);
-    });
-  }
-
   function buildTargets(group, groupIndex) {
     targetEntities.forEach((entity) => entity.remove());
     targetEntities = [];
@@ -162,16 +60,17 @@
       card.setAttribute('position', '-.02 .2 .08');
       entity.appendChild(card);
       const targetId = `${item.id}-${index}`;
-      createText(card, `${targetId}-title`, item.title, '.73', '0 .34 .025', item.accent, '2');
-      addOfficeVisual(card, item);
+      addPanelBackground(card);
+      createText(card, `${targetId}-brand`, `CLAROLAB · ESTACIÓN ${String(groupIndex + 1).padStart(2, '0')}`, '.38', '-.13 .285 .025', '#00e6a0', '1');
+      createText(card, `${targetId}-title`, item.title, '.4', '-.13 .19 .025', '#f4f7f5');
       const divider = document.createElement('a-plane');
-      divider.setAttribute('position', '0 .22 .024');
-      divider.setAttribute('width', '.46');
-      divider.setAttribute('height', '.004');
-      divider.setAttribute('material', `shader: flat; color: ${item.accent}`);
+      divider.setAttribute('position', '-.13 .135 .024');
+      divider.setAttribute('width', '.34');
+      divider.setAttribute('height', '.003');
+      divider.setAttribute('material', 'shader: flat; color: #00e6a0');
       card.appendChild(divider);
-      item.lines.forEach((line, lineIndex) => createText(card, `${targetId}-line-${lineIndex + 1}`, line, '.68', `0 ${[.09, -.02, -.13, -.24][lineIndex]} .025`));
-      createText(card, `${targetId}-footer`, item.footer, '.45', '0 -.43 .025', item.accent, '1');
+      item.lines.forEach((line, lineIndex) => createText(card, `${targetId}-line-${lineIndex + 1}`, line, '.39', `-.13 ${[.09, .02, -.05, -.12][lineIndex]} .025`));
+      createText(card, `${targetId}-footer`, item.footer, '.36', '-.13 -.18 .025', '#00e6a0', '1');
       entity.addEventListener('targetFound', () => {
         if (groupIndex !== currentGroupIndex || !active) return;
         detectedTargets.add(targetId);
@@ -221,7 +120,6 @@
 
     try {
       const targets = buildTargets(group, currentGroupIndex);
-      targets.forEach(({ card }) => drawOfficeCard(card, group));
       arSystem.imageTargetSrc = group.file;
       arSystem.maxTrack = 1;
 
@@ -307,8 +205,7 @@
     try {
       await waitForScene();
       if (closeRequested) return;
-      const targets = buildTargets(group, currentGroupIndex);
-      targets.forEach(({ card }) => drawOfficeCard(card, group));
+      buildTargets(group, currentGroupIndex);
 
       // Configuración del componente MindAR Image Tracking en la escena A-Frame
       scene.setAttribute('mindar-image', {
@@ -316,10 +213,10 @@
         autoStart: false,
         uiLoading: 'no',
         uiScanning: 'no',
-        filterMinCF: 0.0001,
-        filterBeta: 0.01,
-        warmupTolerance: 5,
-        missTolerance: 12,
+        filterMinCF: 0.001,
+        filterBeta: 1000,
+        warmupTolerance: 8,
+        missTolerance: 15,
         maxTrack: 1
       });
 
