@@ -10,24 +10,24 @@
   const welcomePanel = document.getElementById('welcomePanel');
   const scanPanel = document.getElementById('scanPanel');
   const scene = document.getElementById('arScene');
-  const target = document.getElementById('officeTarget');
   const status = document.getElementById('arStatus');
+  const content = window.WORKPLACE_CONTENT;
+  const detectedTargets = new Set();
 
   // Variables de control de estado de la aplicación
   let arSystem = null;          // Instancia del sistema MindAR
   let active = false;           // Indica si el AR está corriendo activamente
   let starting = false;         // Evita múltiples clics mientras se inicializa
   let closeRequested = false;   // Controla si el usuario solicitó cerrar durante la carga
-  let targetFound = false;      // Indica si la imagen objetivo está siendo detectada
-  let cardBackgroundReady = false; // Bandera para evitar redibujar la tarjeta 3D múltiples veces
+  let cardBackgroundReady = new WeakSet(); // Evita redibujar los fondos de las tarjetas
+  let targetEntities = [];
 
   // 2. GENERACIÓN DE ELEMENTOS 3D (THREE.JS)
   //  * Dibuja de forma procedural la tarjeta de información 3D de la oficina utilizando Three.js.
   //  * Nota: En futuras actualizaciones se evaluará cambiar este formato por HTML/DOM o texturas optimizadas.
   //
-  function drawOfficeCard() {
-    if (cardBackgroundReady) return;
-    const card = document.getElementById('officeMessageCard');
+  function drawOfficeCard(card, item) {
+    if (cardBackgroundReady.has(card)) return;
 
     // Función auxiliar para crear formas poligonales (Shapes) en 2D
     const shapeFor = (points) => {
@@ -54,19 +54,94 @@
     };
 
     // Construcción de las capas de fondo
-    makeLayer(outerPoints, '#00e6a0', 0);     // Capa exterior (Borde brillante)
-    makeLayer(innerPoints, '#050806', .003);  // Capa interior (Fondo oscuro)
+    makeLayer(outerPoints, item.accent, 0);   // Borde con color propio de esta oficina
+    makeLayer(innerPoints, item.background, .003);
 
     // Creación del borde lineal decorativo superior
     const offsetOutline = outerPoints.map(([x, y]) => new THREE.Vector3(x + .075, y + .055, -.008));
     const outlineGeometry = new THREE.BufferGeometry().setFromPoints(offsetOutline);
     const outline = new THREE.LineLoop(outlineGeometry, new THREE.LineBasicMaterial({
-      color: '#00e6a0', transparent: true, opacity: .48
+      color: item.accent, transparent: true, opacity: .48
     }));
     outline.renderOrder = 1;
     card.object3D.add(outline);
 
-    cardBackgroundReady = true;
+    cardBackgroundReady.add(card);
+  }
+
+  function createText(parent, id, value, width, position, color = '#f4f7f5', letterSpacing = '') {
+    const text = document.createElement('a-text');
+    text.setAttribute('id', id);
+    text.setAttribute('value', value);
+    text.setAttribute('align', 'center');
+    text.setAttribute('color', color);
+    text.setAttribute('width', width);
+    text.setAttribute('position', position);
+    text.setAttribute('font', 'roboto');
+    text.setAttribute('shader', 'msdf');
+    if (letterSpacing) text.setAttribute('letter-spacing', letterSpacing);
+    parent.appendChild(text);
+  }
+
+  function addOfficeVisual(card, item) {
+    if (item.visual === 'safety') {
+      const marker = document.createElement('a-cone');
+      marker.setAttribute('position', '-.32 .455 .04');
+      marker.setAttribute('radius-bottom', '.055');
+      marker.setAttribute('radius-top', '0');
+      marker.setAttribute('height', '.09');
+      marker.setAttribute('segments-radial', '3');
+      marker.setAttribute('color', item.accent);
+      card.appendChild(marker);
+      createText(card, `${item.id}-symbol`, '!', '.045', '-.32 .445 .055', item.background);
+      return;
+    }
+
+    ['#fa4f9b', '#ffbf45', '#46c7c2', '#6384ff'].forEach((color, index) => {
+      const swatch = document.createElement('a-plane');
+      swatch.setAttribute('position', `${-.38 + index * .075} .455 .04`);
+      swatch.setAttribute('width', '.055');
+      swatch.setAttribute('height', '.045');
+      swatch.setAttribute('material', `shader: flat; color: ${color}`);
+      card.appendChild(swatch);
+    });
+  }
+
+  function buildTargets() {
+    targetEntities.forEach((entity) => entity.remove());
+    targetEntities = [];
+    const entities = content.targets.map((item, index) => {
+      const entity = document.createElement('a-entity');
+      entity.setAttribute('mindar-image-target', `targetIndex: ${index}`);
+      const card = document.createElement('a-entity');
+      card.setAttribute('position', '-.02 .2 .08');
+      entity.appendChild(card);
+      createText(card, `${item.id}-title`, item.title, '.73', '0 .34 .025', item.accent, '2');
+      addOfficeVisual(card, item);
+      const divider = document.createElement('a-plane');
+      divider.setAttribute('position', '0 .22 .024');
+      divider.setAttribute('width', '.46');
+      divider.setAttribute('height', '.004');
+      divider.setAttribute('material', `shader: flat; color: ${item.accent}`);
+      card.appendChild(divider);
+      item.lines.forEach((line, lineIndex) => createText(card, `${item.id}-line-${lineIndex + 1}`, line, '.68', `0 ${[.09, -.02, -.13, -.24][lineIndex]} .025`));
+      createText(card, `${item.id}-footer`, item.footer, '.45', '0 -.43 .025', item.accent, '1');
+      entity.addEventListener('targetFound', () => {
+        detectedTargets.add(item.id);
+        setStatus(`${item.title} · Marcador reconocido`);
+      });
+      entity.addEventListener('targetLost', () => {
+        detectedTargets.delete(item.id);
+        if (active) {
+          const remaining = content.targets.find((target) => detectedTargets.has(target.id));
+          setStatus(remaining ? `${remaining.title} · Marcador reconocido` : 'Marcador fuera de vista · seguí el recorrido');
+        }
+      });
+      scene.insertBefore(entity, scene.querySelector('a-camera'));
+      targetEntities.push(entity);
+      return { entity, card };
+    });
+    return entities;
   }
 
   // 3. GESTIÓN DE INTERFAZ Y ESTADOS (UI)
@@ -114,25 +189,15 @@
     });
   }
 
-  // Evento disparado cuando MindAR detecta la imagen objetivo en el visor
-  target.addEventListener('targetFound', () => {
-    targetFound = true;
-    setStatus('OFICINAS · Marcador reconocido');
-  });
-
-  // Evento disparado cuando la imagen objetivo sale del campo de visión de la cámara
-  target.addEventListener('targetLost', () => {
-    targetFound = false;
-    if (active) setStatus('Marcador fuera de vista · volvé a apuntar a la foto');
-  });
   // 5. INICIALIZACIÓN Y APERTURA DE LA CÁMARA
   async function openAR() {
     if (active || starting) return;
     closeRequested = false;
-    targetFound = false;
+    detectedTargets.clear();
     starting = true;
     startButton.disabled = true;
     showScanner('Preparando cámara…');
+    const content = window.WORKPLACE_CONTENT;
 
     // Validación de seguridad: getUserMedia requiere HTTPS o localhost obligatoriamente
     if (!window.isSecureContext || !navigator.mediaDevices?.getUserMedia) {
@@ -145,11 +210,12 @@
     try {
       await waitForScene();
       if (closeRequested) return;
-      drawOfficeCard();
+      const targets = buildTargets();
+      targets.forEach(({ card }, index) => drawOfficeCard(card, content.targets[index]));
 
       // Configuración del componente MindAR Image Tracking en la escena A-Frame
       scene.setAttribute('mindar-image', {
-        imageTargetSrc: './assets/oficina_prueba.mind',
+        imageTargetSrc: content.mind,
         autoStart: false,
         uiLoading: 'no',
         uiScanning: 'no',
@@ -157,12 +223,12 @@
         filterBeta: 0.01,
         warmupTolerance: 5,
         missTolerance: 12,
-        maxTrack: 1
+        maxTrack: content.targets.length
       });
 
       // Escucha cuando la cámara y MindAR están listos para operar
       scene.addEventListener('arReady', () => {
-        if (!closeRequested && !targetFound) setStatus('Cámara lista · apuntá a la foto de la oficina');
+        if (!closeRequested && detectedTargets.size === 0) setStatus('Cámara lista · seguí el recorrido y enfocá cualquiera de las imágenes');
       }, { once: true });
 
       // Manejo de errores específicos del sistema AR/Cámara
@@ -186,7 +252,7 @@
 
       if (closeRequested) return;
       active = true;
-      if (!targetFound) setStatus('Cámara lista · apuntá a la foto de la oficina');
+      if (detectedTargets.size === 0) setStatus('Cámara lista · seguí el recorrido y enfocá cualquiera de las imágenes');
 
     } catch (error) {
       if (closeRequested) return;
@@ -194,7 +260,7 @@
 
       // Clasificación de errores comunes para mostrar mensajes amigables al usuario
       if (/target|mind|fetch|404|load|network|file/i.test(message)) {
-        setStatus('No se pudo cargar el marcador de la oficina. Revisá assets/oficina_prueba.mind y la conexión.');
+        setStatus(`No se pudo cargar ${content.mind}. Revisá el archivo y la conexión.`);
       } else if (/permission|denied|notallowed|secure|camera/i.test(message)) {
         setStatus('La cámara necesita permiso y una página servida desde HTTPS o localhost.');
       } else {
@@ -219,7 +285,7 @@
   async function closeAR() {
     if (!scanPanel.classList.contains('is-visible')) return;
     closeRequested = true;
-    targetFound = false;
+    detectedTargets.clear();
     const currentSystem = arSystem || scene.systems['mindar-image-system'];
 
     if (starting) {
